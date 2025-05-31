@@ -58,7 +58,7 @@ func main() {
 	}
 
 	// yt-dlp should be available in PATH after installation
-	ytDlpPath := "yt-dlp"
+	ytDlpPath := "/usr/bin/yt-dlp"
 
 	bot, err := tgbotapi.NewBotAPI(botToken)
 	if err != nil {
