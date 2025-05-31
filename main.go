@@ -548,20 +548,57 @@ func downloadAndCacheAudio(bot *tgbotapi.BotAPI, videoID, title string, ytDlpPat
 }
 
 func searchYoutube(query string, ytDlpPath string) []SearchResult {
+	// Добавляем отладку
+	log.Printf("Searching for: %s", query)
+	log.Printf("Using yt-dlp path: %s", ytDlpPath)
+	
+	// Проверяем, доступен ли yt-dlp
+	checkCmd := exec.Command("which", "yt-dlp")
+	checkOut, checkErr := checkCmd.Output()
+	log.Printf("yt-dlp location check: %s, error: %v", string(checkOut), checkErr)
+	
+	// Проверяем версию yt-dlp
+	versionCmd := exec.Command(ytDlpPath, "--version")
+	versionOut, versionErr := versionCmd.Output()
+	log.Printf("yt-dlp version: %s, error: %v", string(versionOut), versionErr)
+	
 	cmd := exec.Command(ytDlpPath, "-j", "--flat-playlist", "ytsearch5:"+query)
+	log.Printf("Executing command: %s", cmd.String())
+	
 	out, err := cmd.Output()
 	if err != nil {
+		log.Printf("Command failed with error: %v", err)
+		// Попробуем получить stderr
+		if exitError, ok := err.(*exec.ExitError); ok {
+			log.Printf("Stderr: %s", string(exitError.Stderr))
+		}
 		return nil
 	}
+	
+	log.Printf("Command output length: %d bytes", len(out))
+	log.Printf("Raw output: %s", string(out))
+	
 	var results []SearchResult
-	for _, line := range strings.Split(string(out), "\n") {
+	lines := strings.Split(string(out), "\n")
+	log.Printf("Split into %d lines", len(lines))
+	
+	for i, line := range lines {
 		if line == "" {
 			continue
 		}
+		log.Printf("Processing line %d: %s", i, line)
+		
 		var r SearchResult
-		json.Unmarshal([]byte(line), &r)
+		err := json.Unmarshal([]byte(line), &r)
+		if err != nil {
+			log.Printf("Failed to parse JSON on line %d: %v", i, err)
+			continue
+		}
+		log.Printf("Parsed result: ID=%s, Title=%s, Duration=%d", r.ID, r.Title, r.Duration)
 		results = append(results, r)
 	}
+	
+	log.Printf("Found %d results", len(results))
 	return results
 }
 
