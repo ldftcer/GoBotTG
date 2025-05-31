@@ -29,6 +29,9 @@ RUN apk --no-cache add ca-certificates python3 py3-pip ffmpeg
 RUN pip3 install --upgrade pip && \
     pip3 install yt-dlp
 
+# Create symlink to ensure yt-dlp is in PATH
+RUN ln -sf /usr/local/bin/yt-dlp /usr/bin/yt-dlp
+
 # Verify installation
 RUN which yt-dlp && yt-dlp --version
 
