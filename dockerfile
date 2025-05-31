@@ -22,18 +22,30 @@ RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main .
 # Final stage
 FROM alpine:latest
 
-# Install runtime dependencies
-RUN apk --no-cache add ca-certificates python3 py3-pip ffmpeg
+# Install runtime dependencies including Python
+RUN apk --no-cache add ca-certificates python3 py3-pip ffmpeg wget
 
-# Upgrade pip and install yt-dlp
-RUN pip3 install --upgrade pip && \
-    pip3 install yt-dlp
+# Install yt-dlp via pip3
+RUN pip3 install --break-system-packages yt-dlp
 
-# Create symlink to ensure yt-dlp is in PATH
+# Make sure yt-dlp is executable and in the right location
+RUN which yt-dlp || echo "yt-dlp not found in PATH"
+RUN find / -name "yt-dlp" -type f 2>/dev/null || echo "yt-dlp not found anywhere"
+
+# Create symlinks for common locations
+RUN ln -sf $(which yt-dlp || echo /usr/bin/yt-dlp) /usr/bin/yt-dlp 2>/dev/null || true
+RUN ln -sf $(which yt-dlp || echo /usr/local/bin/yt-dlp) /usr/local/bin/yt-dlp 2>/dev/null || true
+
+# Alternative: Download directly from GitHub
+RUN wget -O /usr/local/bin/yt-dlp https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp
+RUN chmod +x /usr/local/bin/yt-dlp
+
+# Create additional symlink
 RUN ln -sf /usr/local/bin/yt-dlp /usr/bin/yt-dlp
 
-# Verify installation
-RUN which yt-dlp && yt-dlp --version
+# Test the installation
+RUN /usr/bin/yt-dlp --version
+RUN /usr/local/bin/yt-dlp --version
 
 WORKDIR /root/
 
@@ -43,7 +55,7 @@ COPY --from=builder /app/main .
 # Create downloads directory
 RUN mkdir downloads
 
-# Expose port (Railway will override this)
+# Expose port
 EXPOSE 8080
 
 # Run the binary
