@@ -1,11 +1,8 @@
 # Use the official Go image
 FROM golang:1.21-alpine AS builder
 
-# Install dependencies
-RUN apk add --no-cache git python3 py3-pip ffmpeg
-
-# Install yt-dlp
-RUN pip3 install yt-dlp
+# Install build dependencies
+RUN apk add --no-cache git
 
 # Set working directory
 WORKDIR /app
@@ -28,8 +25,12 @@ FROM alpine:latest
 # Install runtime dependencies
 RUN apk --no-cache add ca-certificates python3 py3-pip ffmpeg
 
-# Install yt-dlp in final image
-RUN pip3 install yt-dlp
+# Upgrade pip and install yt-dlp
+RUN pip3 install --upgrade pip && \
+    pip3 install yt-dlp
+
+# Verify installation
+RUN which yt-dlp && yt-dlp --version
 
 WORKDIR /root/
 
