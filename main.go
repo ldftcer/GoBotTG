@@ -35,40 +35,6 @@ type SearchResult struct {
 	Duration int    `json:"duration"`
 }
 
-// ДОБАВЬТЕ ЭТУ ФУНКЦИЮ ЗДЕСЬ
-func findYtDlp() string {
-	paths := []string{
-		"/usr/local/bin/yt-dlp",
-		"/usr/bin/yt-dlp",
-		"yt-dlp",
-	}
-
-	for _, path := range paths {
-		log.Printf("Trying path: %s", path)
-		if _, err := os.Stat(path); err == nil {
-			log.Printf("Found yt-dlp at: %s", path)
-			// Проверим, что файл исполняемый
-			if info, err := os.Stat(path); err == nil {
-				log.Printf("File mode: %v", info.Mode())
-				return path
-			}
-		} else {
-			log.Printf("Path %s not found: %v", path, err)
-		}
-	}
-
-	// Последняя попытка - поиск через which
-	cmd := exec.Command("which", "yt-dlp")
-	if out, err := cmd.Output(); err == nil {
-		foundPath := strings.TrimSpace(string(out))
-		log.Printf("Found via which: %s", foundPath)
-		return foundPath
-	}
-
-	log.Printf("yt-dlp not found anywhere, using default")
-	return "yt-dlp"
-}
-
 func main() {
 	os.MkdirAll(DownloadFolder, 0755)
 
@@ -91,10 +57,8 @@ func main() {
 		cacheChannelID, _ = strconv.ParseInt(cacheChannelIDStr, 10, 64)
 	}
 
-	// ЗАМЕНИТЕ ЭТУ СТРОКУ:
-	// ytDlpPath := "yt-dlp"
-	// НА ЭТУ:
-	ytDlpPath := findYtDlp()
+	// yt-dlp should be available in PATH after installation
+	ytDlpPath := "./yt-dlp.exe"
 
 	bot, err := tgbotapi.NewBotAPI(botToken)
 	if err != nil {
@@ -587,20 +551,20 @@ func searchYoutube(query string, ytDlpPath string) []SearchResult {
 	// Добавляем отладку
 	log.Printf("Searching for: %s", query)
 	log.Printf("Using yt-dlp path: %s", ytDlpPath)
-
+	
 	// Проверяем, доступен ли yt-dlp
 	checkCmd := exec.Command("which", "yt-dlp")
 	checkOut, checkErr := checkCmd.Output()
 	log.Printf("yt-dlp location check: %s, error: %v", string(checkOut), checkErr)
-
+	
 	// Проверяем версию yt-dlp
 	versionCmd := exec.Command(ytDlpPath, "--version")
 	versionOut, versionErr := versionCmd.Output()
 	log.Printf("yt-dlp version: %s, error: %v", string(versionOut), versionErr)
-
+	
 	cmd := exec.Command(ytDlpPath, "-j", "--flat-playlist", "ytsearch5:"+query)
 	log.Printf("Executing command: %s", cmd.String())
-
+	
 	out, err := cmd.Output()
 	if err != nil {
 		log.Printf("Command failed with error: %v", err)
@@ -610,20 +574,20 @@ func searchYoutube(query string, ytDlpPath string) []SearchResult {
 		}
 		return nil
 	}
-
+	
 	log.Printf("Command output length: %d bytes", len(out))
 	log.Printf("Raw output: %s", string(out))
-
+	
 	var results []SearchResult
 	lines := strings.Split(string(out), "\n")
 	log.Printf("Split into %d lines", len(lines))
-
+	
 	for i, line := range lines {
 		if line == "" {
 			continue
 		}
 		log.Printf("Processing line %d: %s", i, line)
-
+		
 		var r SearchResult
 		err := json.Unmarshal([]byte(line), &r)
 		if err != nil {
@@ -633,7 +597,7 @@ func searchYoutube(query string, ytDlpPath string) []SearchResult {
 		log.Printf("Parsed result: ID=%s, Title=%s, Duration=%d", r.ID, r.Title, r.Duration)
 		results = append(results, r)
 	}
-
+	
 	log.Printf("Found %d results", len(results))
 	return results
 }
